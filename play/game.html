@@ -41,21 +41,21 @@
 
     <script>
         // ===== 轻量级复古游戏音效 =====
-// 创建音效函数（自动预加载，体积极小）
-function playSound(type) {
-    const sounds = {
-        shoot: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3'),
-        explode: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-game-over-470.mp3'),
-        powerup: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-arcade-mechanical-bling-210.mp3')
-    };
-    // 播放音效（防止重复播放）
-    const sound = sounds[type];
-    if (sound) {
-        sound.currentTime = 0;
-        sound.volume = 0.5; // 音量调小，避免刺耳
-        sound.play().catch(e => {}); // 捕获浏览器自动播放限制
-    }
-}
+        function playSound(type) {
+            const sounds = {
+                shoot: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3'),
+                explode: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-game-over-470.mp3'),
+                powerup: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-arcade-mechanical-bling-210.mp3')
+            };
+            const sound = sounds[type];
+            if (sound) {
+                sound.currentTime = 0;
+                sound.volume = 0.5;
+                sound.play().catch(e => {});
+            }
+        }
+
+        // ===== 游戏核心逻辑 =====
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreEl = document.getElementById('score');
@@ -115,12 +115,10 @@ function playSound(type) {
             if (player.y + player.height > canvas.height) player.y = canvas.height - player.height;
         });
 
-        // 玩家射击
-        function shoot() {
-    if (isPaused) return;
-    playSound('shoot'); // 新增：播放射击音效
+        // 玩家射击（带音效）
         function shoot() {
             if (isPaused) return;
+            playSound('shoot'); // 射击音效
             player.bullets.push({
                 x: player.x + player.width / 2 - 2,
                 y: player.y,
@@ -209,14 +207,14 @@ function playSound(type) {
 
         // 绘制敌机
         function drawEnemies() {
-            enemies.forEach(e => {
-                ctx.fillStyle = e.color;
-                ctx.fillRect(e.x, e.y, e.width, e.height);
+            enemies.forEach(row => {
+                ctx.fillStyle = row.color;
+                ctx.fillRect(row.x, row.y, row.width, row.height);
                 // 绘制血量
-                if (e.hp > 1) {
+                if (row.hp > 1) {
                     ctx.fillStyle = '#fff';
                     ctx.font = '12px Arial';
-                    ctx.fillText(e.hp, e.x + e.width/2 - 5, e.y + e.height/2 + 5);
+                    ctx.fillText(row.hp, row.x + row.width/2 - 5, row.y + row.height/2 + 5);
                 }
             });
         }
@@ -287,19 +285,22 @@ function playSound(type) {
                 return p.y < canvas.height;
             });
 
-            // 子弹击中敌机
+            // 子弹击中敌机（带爆炸音效）
             player.bullets.forEach((b, bi) => {
                 enemies.forEach((e, ei) => {
                     if (rectCollision(b, e)) {
                         e.hp--;
                         player.bullets.splice(bi, 1);
                         if (e.hp <= 0) {
+                            playSound('explode'); // 爆炸音效
                             enemies.splice(ei, 1);
                             score += e.width === 40 ? 50 : 10;
                             // 升级检测
-                            if (score >= level * 100) {
+                            let remaining = enemies.length;
+                            if (remaining === 0) {
                                 level++;
-                                alert(`升级到 ${level} 级！敌机速度提升`);
+                                alert(`恭喜通关第 ${level-1} 关！\n进入第 ${level} 关，生命+1`);
+                                resetGame(false);
                             }
                         }
                     }
@@ -334,9 +335,10 @@ function playSound(type) {
                 }
             });
 
-            // 吃道具
+            // 吃道具（带道具音效）
             powerups.forEach((p, pi) => {
                 if (rectCollision(p, player)) {
+                    playSound('powerup'); // 道具音效
                     powerups.splice(pi, 1);
                     if (p.type === 'speed') player.speed += 2;
                     if (p.type === 'multishot') {

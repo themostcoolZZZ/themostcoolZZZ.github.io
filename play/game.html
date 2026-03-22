@@ -40,6 +40,22 @@
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
     <script>
+        // ===== 轻量级复古游戏音效 =====
+// 创建音效函数（自动预加载，体积极小）
+function playSound(type) {
+    const sounds = {
+        shoot: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3'),
+        explode: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-game-over-470.mp3'),
+        powerup: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-arcade-mechanical-bling-210.mp3')
+    };
+    // 播放音效（防止重复播放）
+    const sound = sounds[type];
+    if (sound) {
+        sound.currentTime = 0;
+        sound.volume = 0.5; // 音量调小，避免刺耳
+        sound.play().catch(e => {}); // 捕获浏览器自动播放限制
+    }
+}
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreEl = document.getElementById('score');
@@ -100,6 +116,9 @@
         });
 
         // 玩家射击
+        function shoot() {
+    if (isPaused) return;
+    playSound('shoot'); // 新增：播放射击音效
         function shoot() {
             if (isPaused) return;
             player.bullets.push({

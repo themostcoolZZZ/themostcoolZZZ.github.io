@@ -40,36 +40,29 @@
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
     <script>
-        // ===== 轻量级复古游戏音效 =====
-        function playSound(type) {
-            const sounds = {
-                shoot: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3'),
-                explode: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-game-over-470.mp3'),
-                powerup: new Audio('https://assets.mixkit.co/sfx/preview/mixkit-arcade-mechanical-bling-210.mp3')
-            };
-            const sound = sounds[type];
-            if (sound) {
-                sound.currentTime = 0;
-                sound.volume = 0.5;
-                sound.play().catch(e => {});
-            }
+        // ===== 正常可用的复古游戏音效 =====
+        const shootSound = new Audio('https://assets.mixkit.co/sfx/mp3/mixkit-arcade-game-jump-coin-216.mp3');
+        const explodeSound = new Audio('https://assets.mixkit.co/sfx/mp3/mixkit-retro-arcade-game-over-470.mp3');
+        const powerupSound = new Audio('https://assets.mixkit.co/sfx/mp3/mixkit-arcade-mechanical-bling-210.mp3');
+
+        function playSound(sound) {
+            sound.currentTime = 0;
+            sound.volume = 0.5;
+            sound.play().catch(err => {});
         }
 
-        // ===== 游戏核心逻辑 =====
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreEl = document.getElementById('score');
         const livesEl = document.getElementById('lives');
         const levelEl = document.getElementById('level');
 
-        // 游戏状态
         let score = 0;
         let lives = 3;
         let level = 1;
         let gameLoop;
         let isPaused = false;
 
-        // 玩家飞机
         const player = {
             x: canvas.width / 2 - 25,
             y: canvas.height - 60,
@@ -80,45 +73,40 @@
             bullets: []
         };
 
-        // 敌机
         let enemies = [];
         const enemySpeed = 2;
         let enemySpawnTimer = 0;
         const enemySpawnInterval = 60;
 
-        // 敌机子弹
         let enemyBullets = [];
 
-        // 道具
         let powerups = [];
         const powerupSpawnInterval = 300;
         let powerupTimer = 0;
 
-        // 键盘控制
         const keys = {};
         document.addEventListener('keydown', (e) => {
             keys[e.key] = true;
             if (e.key === ' ') shoot();
             if (e.key === 'p' || e.key === 'P') isPaused = !isPaused;
         });
-        document.addEventListener('keyup', (e) => keys[e.key] = false);
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
 
-        // 鼠标控制
         canvas.addEventListener('mousemove', (e) => {
             const rect = canvas.getBoundingClientRect();
             player.x = e.clientX - rect.left - player.width / 2;
             player.y = e.clientY - rect.top - player.height / 2;
-            // 限制飞机在画布内
             if (player.x < 0) player.x = 0;
             if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
             if (player.y < 0) player.y = 0;
             if (player.y + player.height > canvas.height) player.y = canvas.height - player.height;
         });
 
-        // 玩家射击（带音效）
         function shoot() {
             if (isPaused) return;
-            playSound('shoot'); // 射击音效
+            playSound(shootSound);
             player.bullets.push({
                 x: player.x + player.width / 2 - 2,
                 y: player.y,
@@ -129,7 +117,6 @@
             });
         }
 
-        // 敌机射击
         function enemyShoot(enemy) {
             if (Math.random() < 0.01) {
                 enemyBullets.push({
@@ -143,7 +130,6 @@
             }
         }
 
-        // 生成敌机
         function spawnEnemy() {
             const size = Math.random() < 0.3 ? 40 : 30;
             enemies.push({
@@ -157,7 +143,6 @@
             });
         }
 
-        // 生成道具
         function spawnPowerup() {
             const types = ['speed', 'multishot', 'shield'];
             const type = types[Math.floor(Math.random() * types.length)];
@@ -172,7 +157,6 @@
             });
         }
 
-        // 碰撞检测
         function rectCollision(r1, r2) {
             return (
                 r1.x < r2.x + r2.width &&
@@ -182,7 +166,6 @@
             );
         }
 
-        // 绘制玩家飞机
         function drawPlayer() {
             ctx.fillStyle = player.color;
             ctx.beginPath();
@@ -193,7 +176,6 @@
             ctx.fill();
         }
 
-        // 绘制子弹
         function drawBullets() {
             player.bullets.forEach(b => {
                 ctx.fillStyle = b.color;
@@ -205,21 +187,18 @@
             });
         }
 
-        // 绘制敌机
         function drawEnemies() {
-            enemies.forEach(row => {
-                ctx.fillStyle = row.color;
-                ctx.fillRect(row.x, row.y, row.width, row.height);
-                // 绘制血量
-                if (row.hp > 1) {
+            enemies.forEach(e => {
+                ctx.fillStyle = e.color;
+                ctx.fillRect(e.x, e.y, e.width, e.height);
+                if (e.hp > 1) {
                     ctx.fillStyle = '#fff';
                     ctx.font = '12px Arial';
-                    ctx.fillText(row.hp, row.x + row.width/2 - 5, row.y + row.height/2 + 5);
+                    ctx.fillText(e.hp, e.x + e.width/2 - 5, e.y + e.height/2 + 5);
                 }
             });
         }
 
-        // 绘制道具
         function drawPowerups() {
             powerups.forEach(p => {
                 ctx.fillStyle = p.color;
@@ -230,84 +209,70 @@
             });
         }
 
-        // 更新游戏逻辑
         function update() {
             if (isPaused) return;
 
-            // 玩家移动
             if (keys['ArrowLeft'] || keys['a'] || keys['A']) player.x -= player.speed;
             if (keys['ArrowRight'] || keys['d'] || keys['D']) player.x += player.speed;
             if (keys['ArrowUp'] || keys['w'] || keys['W']) player.y -= player.speed;
             if (keys['ArrowDown'] || keys['s'] || keys['S']) player.y += player.speed;
 
-            // 边界限制
             if (player.x < 0) player.x = 0;
             if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
             if (player.y < 0) player.y = 0;
             if (player.y + player.height > canvas.height) player.y = canvas.height - player.height;
 
-            // 更新玩家子弹
             player.bullets = player.bullets.filter(b => {
                 b.y -= b.speed;
                 return b.y > -b.height;
             });
 
-            // 更新敌机子弹
             enemyBullets = enemyBullets.filter(b => {
                 b.y += b.speed;
                 return b.y < canvas.height;
             });
 
-            // 生成敌机
             enemySpawnTimer++;
             if (enemySpawnTimer >= enemySpawnInterval - level * 5) {
                 spawnEnemy();
                 enemySpawnTimer = 0;
             }
 
-            // 生成道具
             powerupTimer++;
             if (powerupTimer >= powerupSpawnInterval) {
                 spawnPowerup();
                 powerupTimer = 0;
             }
 
-            // 更新敌机
             enemies = enemies.filter(e => {
                 e.y += e.speed;
                 enemyShoot(e);
                 return e.y < canvas.height;
             });
 
-            // 更新道具
             powerups = powerups.filter(p => {
                 p.y += p.speed;
                 return p.y < canvas.height;
             });
 
-            // 子弹击中敌机（带爆炸音效）
             player.bullets.forEach((b, bi) => {
                 enemies.forEach((e, ei) => {
                     if (rectCollision(b, e)) {
                         e.hp--;
                         player.bullets.splice(bi, 1);
                         if (e.hp <= 0) {
-                            playSound('explode'); // 爆炸音效
+                            playSound(explodeSound);
                             enemies.splice(ei, 1);
                             score += e.width === 40 ? 50 : 10;
-                            // 升级检测
-                            let remaining = enemies.length;
-                            if (remaining === 0) {
+                            if (score >= level * 100) {
                                 level++;
-                                alert(`恭喜通关第 ${level-1} 关！\n进入第 ${level} 关，生命+1`);
-                                resetGame(false);
+                                alert(`升级到 ${level} 级！`);
                             }
                         }
                     }
                 });
             });
 
-            // 敌机子弹击中玩家
             enemyBullets.forEach((b, bi) => {
                 if (rectCollision(b, player)) {
                     enemyBullets.splice(bi, 1);
@@ -321,7 +286,6 @@
                 }
             });
 
-            // 敌机撞玩家
             enemies.forEach((e, ei) => {
                 if (rectCollision(e, player)) {
                     enemies.splice(ei, 1);
@@ -335,26 +299,29 @@
                 }
             });
 
-            // 吃道具（带道具音效）
             powerups.forEach((p, pi) => {
                 if (rectCollision(p, player)) {
-                    playSound('powerup'); // 道具音效
+                    playSound(powerupSound);
                     powerups.splice(pi, 1);
                     if (p.type === 'speed') player.speed += 2;
                     if (p.type === 'multishot') {
+                        const oldShoot = shoot;
+                        shoot = () => {
+                            if (isPaused) return;
+                            playSound(shootSound);
+                            player.bullets.push({x: player.x + player.width/2 - 8, y: player.y, width: 4, height: 15, speed: 7, color: '#ffff00'});
+                            player.bullets.push({x: player.x + player.width/2 + 4, y: player.y, width: 4, height: 15, speed: 7, color: '#ffff00'});
+                            player.bullets.push({x: player.x + player.width/2 - 2, y: player.y, width: 4, height: 15, speed: 7, color: '#ffff00'});
+                        };
                         setTimeout(() => {
-                            const originalShoot = shoot;
-                            shoot = () => {
-                                player.bullets.push({x: player.x + player.width/2 - 8, y: player.y, width: 4, height: 15, speed: 7, color: '#ffff00'});
-                                player.bullets.push({x: player.x + player.width/2 + 4, y: player.y, width: 4, height: 15, speed: 7, color: '#ffff00'});
-                                player.bullets.push({x: player.x + player.width/2 - 2, y: player.y, width: 4, height: 15, speed: 7, color: '#ffff00'});
-                            };
-                            setTimeout(() => shoot = originalShoot, 5000);
-                        }, 0);
+                            shoot = oldShoot;
+                        }, 5000);
                     }
                     if (p.type === 'shield') {
                         player.color = '#00ffff';
-                        setTimeout(() => player.color = '#00ff00', 3000);
+                        setTimeout(() => {
+                            player.color = '#00ff00';
+                        }, 3000);
                     }
                 }
             });
@@ -363,7 +330,6 @@
             levelEl.textContent = level;
         }
 
-        // 游戏主循环
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawPlayer();
@@ -373,7 +339,6 @@
             update();
         }
 
-        // 重置游戏
         function resetGame() {
             score = 0;
             lives = 3;
@@ -394,7 +359,6 @@
             gameLoop = setInterval(draw, 1000/60);
         }
 
-        // 启动游戏
         gameLoop = setInterval(draw, 1000/60);
     </script>
 </body>

@@ -41,9 +41,24 @@
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
     <script>
-        // ===================== 音效系统（修复版）=====================
-        // 提前创建音频对象，只创建一次，预加载
+        // ===================== 音效系统（背景音乐版）=====================
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // 背景音乐（循环播放）
+        let bgMusicLoop;
+        function startBackgroundMusic() {
+            if (bgMusicLoop) return;
+            const now = audioCtx.currentTime;
+            bgMusicLoop = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            bgMusicLoop.type = 'triangle';
+            bgMusicLoop.frequency.setValueAtTime(220, now);
+            gainNode.gain.value = 0.15;
+            bgMusicLoop.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            bgMusicLoop.start();
+            bgMusicLoop.loop = true;
+        }
 
         function playTone(freq, dur, type = 'sine') {
             const osc = audioCtx.createOscillator();
@@ -58,11 +73,8 @@
             osc.stop(audioCtx.currentTime + dur);
         }
 
-        // 游戏音效（古早电子音，完全本地生成，不依赖外部链接）
-        function playShoot() {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            playTone(660, 0.1, 'square');
-        }
+        // 音效：只保留爆炸和道具，去掉开火
+        function playShoot() {} // 空函数，不发声
         function playExplode() {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             playTone(220, 0.3, 'sawtooth');
@@ -107,9 +119,10 @@
 
         const keys = {};
 
-        // 第一次交互就激活音频
+        // 第一次交互就激活音频并播放背景音乐
         function firstInteraction() {
             if (audioCtx.state === 'suspended') audioCtx.resume();
+            startBackgroundMusic();
         }
         document.addEventListener('click', firstInteraction);
         document.addEventListener('keydown', firstInteraction);
@@ -135,7 +148,7 @@
 
         function shoot() {
             if (isPaused) return;
-            playShoot(); // 射击音效
+            playShoot(); // 这里已经不发声
             player.bullets.push({
                 x: player.x + player.width / 2 - 2,
                 y: player.y,
@@ -290,7 +303,7 @@
                         e.hp--;
                         player.bullets.splice(bi, 1);
                         if (e.hp <= 0) {
-                            playExplode(); // 爆炸音效
+                            playExplode();
                             enemies.splice(ei, 1);
                             score += e.width === 40 ? 50 : 10;
                         }
@@ -326,7 +339,7 @@
 
             powerups.forEach((p, pi) => {
                 if (rectCollision(p, player)) {
-                    playPowerup(); // 吃到道具音效
+                    playPowerup();
                     powerups.splice(pi, 1);
                     if (p.type === 'speed') player.speed += 2;
                     if (p.type === 'multishot') {

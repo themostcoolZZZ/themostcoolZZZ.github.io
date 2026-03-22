@@ -41,47 +41,81 @@
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
     <script>
-        // ===================== 音效系统（背景音乐版）=====================
+        // ===================== 有节奏的背景音乐 =====================
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let bgTimer;
+        let isMusicStarted = false;
 
-        // 背景音乐（循环播放）
-        let bgMusicLoop;
-        function startBackgroundMusic() {
-            if (bgMusicLoop) return;
-            const now = audioCtx.currentTime;
-            bgMusicLoop = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            bgMusicLoop.type = 'triangle';
-            bgMusicLoop.frequency.setValueAtTime(220, now);
-            gainNode.gain.value = 0.15;
-            bgMusicLoop.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            bgMusicLoop.start();
-            bgMusicLoop.loop = true;
+        function playNote(freq, dur, delay = 0, vol = 0.2) {
+            setTimeout(() => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = "square";
+                osc.frequency.value = freq;
+                gain.gain.value = vol;
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+                osc.stop(audioCtx.currentTime + dur + 0.01);
+            }, delay * 1000);
         }
 
-        function playTone(freq, dur, type = 'sine') {
+        function playBeatLoop() {
+            if (bgTimer) clearInterval(bgTimer);
+            const bpm = 140;
+            const spm = 60 / bpm;
+            const loop = () => {
+                const t = 0;
+               const step = spm;
+                playNote(330, step*0.9, t);
+                playNote(330, step*0.9, t + step);
+                playNote(440, step*0.9, t + step*2);
+                playNote(330, step*0.9, t + step*3);
+                playNote(220, step*0.9, t + step*4);
+                playNote(220, step*0.9, t + step*5);
+                playNote(330, step*0.9, t + step*6);
+                playNote(220, step*0.9, t + step*7);
+            };
+            loop();
+            bgTimer = setInterval(loop, spm * 8 * 1000);
+        }
+
+        function startMusic() {
+            if (isMusicStarted) return;
+            isMusicStarted = true;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            playBeatLoop();
+        }
+
+        // 开火音效：空（静音）
+        function playShoot() {}
+        // 爆炸 & 道具音效保留
+        function playExplode() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = type;
-            osc.frequency.value = freq;
+            osc.type = 'sawtooth';
+            osc.frequency.value = 180;
             gain.gain.value = 0.3;
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start();
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
-            osc.stop(audioCtx.currentTime + dur);
-        }
-
-        // 音效：只保留爆炸和道具，去掉开火
-        function playShoot() {} // 空函数，不发声
-        function playExplode() {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            playTone(220, 0.3, 'sawtooth');
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+            osc.stop(audioCtx.currentTime + 0.35);
         }
         function playPowerup() {
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            playTone(880, 0.15, 'sine');
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = 880;
+            gain.gain.value = 0.3;
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+            osc.stop(audioCtx.currentTime + 0.2);
         }
 
         // ===================== 游戏逻辑 =====================
@@ -119,10 +153,9 @@
 
         const keys = {};
 
-        // 第一次交互就激活音频并播放背景音乐
+        // 第一次交互启动音乐
         function firstInteraction() {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            startBackgroundMusic();
+            startMusic();
         }
         document.addEventListener('click', firstInteraction);
         document.addEventListener('keydown', firstInteraction);
@@ -148,7 +181,7 @@
 
         function shoot() {
             if (isPaused) return;
-            playShoot(); // 这里已经不发声
+            playShoot();
             player.bullets.push({
                 x: player.x + player.width / 2 - 2,
                 y: player.y,
